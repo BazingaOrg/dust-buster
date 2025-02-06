@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "灰不了",
+    "version": "0.1.0",
+    "description": "灰不了 - 一个让你对着收藏夹'呼噜噜'吹灰的搜索工具！",
+    "icons": {
+        "16": "favicon.png",
+        "32": "favicon.png",
+        "48": "favicon.png",
+        "128": "favicon.png"
+    },
+    "permissions": [
+        "bookmarks",
+        "storage",
+        "tabs"
+    ],
+    "chrome_url_overrides": {
+        "newtab": "index.html"
+    }
+}
