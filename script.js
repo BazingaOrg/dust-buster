@@ -36,7 +36,7 @@ function getFaviconUrl(url) {
       url: `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=32`,
       fallbacks: [
         `https://icon.horse/icon/${parsedUrl.hostname}`,
-        `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${parsedUrl.hostname}&size=32`,
+        `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${parsedUrl.origin}&size=32`,
         DEFAULT_ICON,
       ],
     };
@@ -73,6 +73,149 @@ function handleImageError(img) {
     img.onerror = null;
     img.src = DEFAULT_ICON;
     img.classList.add("default-icon");
+  }
+}
+
+// 获取网站预览图URL
+function getWebsitePreviewUrl(url) {
+  try {
+    const parsedUrl = safeParseUrl(url);
+    if (!parsedUrl) return null;
+
+    // 检查缓存
+    try {
+      const previewCache = JSON.parse(
+        localStorage.getItem("previewCache") || "{}"
+      );
+      const cacheKey = url;
+
+      // 缓存有效期为1天
+      const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 1天的毫秒数
+
+      // 如果存在有效缓存，直接返回
+      if (
+        previewCache[cacheKey] &&
+        previewCache[cacheKey].timestamp > Date.now() - CACHE_EXPIRY &&
+        previewCache[cacheKey].url
+      ) {
+        console.log(`Using cached preview for ${url}`);
+        return previewCache[cacheKey].url;
+      }
+    } catch (cacheError) {
+      console.warn("Error accessing preview cache:", cacheError);
+      // 继续执行，不要因为缓存错误影响功能
+    }
+
+    // 没有缓存或缓存过期时，使用合适的备选方案
+    // 针对不同网站使用不同的预览服务
+
+    // 常见社交媒体、新闻和流行网站特殊处理，通常网站自己提供的预览图更可靠
+    if (/youtube\.com|youtu\.be/.test(parsedUrl.hostname)) {
+      // YouTube视频预览
+      const videoId = parsedUrl.pathname.includes("watch")
+        ? new URLSearchParams(parsedUrl.search).get("v")
+        : parsedUrl.pathname.replace(/^\//, "");
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+      }
+    }
+
+    // 一般网站使用图像服务
+    return `https://image.thum.io/get/width/400/crop/800/noanimate/${url}`;
+  } catch (e) {
+    console.error("Error getting website preview:", e);
+    return null;
+  }
+}
+
+// 更新预览图缓存
+function updatePreviewCache(url, previewUrl) {
+  try {
+    if (!url || !previewUrl) return;
+
+    const previewCache = JSON.parse(
+      localStorage.getItem("previewCache") || "{}"
+    );
+    previewCache[url] = {
+      url: previewUrl,
+      timestamp: Date.now(),
+    };
+
+    // 缓存清理：仅保留最近100个缓存（减少存储负担）
+    const urlKeys = Object.keys(previewCache);
+    if (urlKeys.length > 100) {
+      // 按时间戳排序
+      urlKeys.sort(
+        (a, b) => previewCache[a].timestamp - previewCache[b].timestamp
+      );
+      // 移除最旧的条目
+      for (let i = 0; i < urlKeys.length - 100; i++) {
+        delete previewCache[urlKeys[i]];
+      }
+    }
+
+    localStorage.setItem("previewCache", JSON.stringify(previewCache));
+  } catch (e) {
+    console.error("Error updating preview cache:", e);
+  }
+}
+
+// 尝试使用Open Graph获取预览图（备选方案）
+async function getOgImage(url) {
+  try {
+    // 由于CORS限制，我们不能直接通过fetch获取外部网站内容
+    // 这里我们直接返回null，改为使用backupImageService获取预览
+    console.log("OG Image fetch not attempted due to CORS limitations");
+    return null;
+  } catch (e) {
+    console.error("Error fetching OG image:", e);
+    return null;
+  }
+}
+
+// 使用备用图片服务
+function backupImageService(url) {
+  try {
+    const parsedUrl = safeParseUrl(url);
+    if (!parsedUrl) return null;
+
+    // 尝试其他预览图服务 - 使用更可靠的参数
+    return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${parsedUrl.origin}&size=128`;
+  } catch (e) {
+    console.error("Error using backup image service:", e);
+    return null;
+  }
+}
+
+// 处理预览图加载错误，尝试备选方案
+function handlePreviewError(img, url) {
+  if (!img || !url) return;
+
+  img.style.display = "none"; // 隐藏出错的图片
+
+  // 在预览图位置显示加载状态
+  const previewContainer = img.parentElement;
+  if (previewContainer) {
+    previewContainer.classList.add("loading-preview");
+
+    // 使用备用图片服务
+    const backupUrl = backupImageService(url);
+
+    if (backupUrl) {
+      // 重置图片并使用备用图像
+      img.src = backupUrl;
+      img.style.display = "";
+      // 更新事件处理，避免循环
+      img.onerror = () => {
+        img.style.display = "none";
+        previewContainer.classList.remove("loading-preview");
+        previewContainer.classList.add("no-preview");
+      };
+    } else {
+      // 如果也没有备用图像，则显示无预览状态
+      previewContainer.classList.remove("loading-preview");
+      previewContainer.classList.add("no-preview");
+    }
   }
 }
 
@@ -131,12 +274,329 @@ function filterBookmarks(query, updateUI = true) {
   return filtered;
 }
 
-// 渲染书签列表
+// 使用Intersection Observer优化预览图加载
+let imageObserver;
+
+function setupIntersectionObserver() {
+  // 如果浏览器支持Intersection Observer
+  if ("IntersectionObserver" in window) {
+    imageObserver = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          // 当预览图容器进入视口
+          if (entry.isIntersecting) {
+            const previewContainer = entry.target;
+            const previewImage =
+              previewContainer.querySelector(".preview-image");
+
+            if (previewImage && previewImage.dataset.src && !previewImage.src) {
+              // 设置图片src，开始加载
+              previewImage.src = previewImage.dataset.src;
+
+              // 停止观察这个元素
+              observer.unobserve(previewContainer);
+            }
+          }
+        });
+      },
+      {
+        rootMargin: "200px 0px", // 提前200px开始加载
+        threshold: 0.01, // 当元素有1%进入视口时触发
+      }
+    );
+  }
+}
+
+// 键盘导航相关变量
+let focusedBookmarkIndex = -1;
+let visibleBookmarks = [];
+
+// 更新键盘导航的书签列表
+function updateNavigableBookmarks() {
+  visibleBookmarks = Array.from(document.querySelectorAll(".bookmark-item"));
+  // 如果之前有焦点，重新设置为第一个元素
+  if (focusedBookmarkIndex !== -1) {
+    focusedBookmarkIndex = 0;
+    if (visibleBookmarks.length > 0) {
+      setFocusedBookmark(0);
+    }
+  }
+}
+
+// 设置焦点书签
+function setFocusedBookmark(index) {
+  // 移除之前的焦点样式
+  if (focusedBookmarkIndex !== -1 && visibleBookmarks[focusedBookmarkIndex]) {
+    visibleBookmarks[focusedBookmarkIndex].classList.remove("keyboard-focus");
+    visibleBookmarks[focusedBookmarkIndex].setAttribute("tabindex", "-1");
+  }
+
+  // 设置新的焦点
+  focusedBookmarkIndex = index;
+
+  if (index !== -1 && visibleBookmarks[index]) {
+    visibleBookmarks[index].classList.add("keyboard-focus");
+    visibleBookmarks[index].setAttribute("tabindex", "0");
+    visibleBookmarks[index].focus();
+
+    // 确保焦点元素在视口内
+    visibleBookmarks[index].scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }
+}
+
+// 处理键盘导航
+function handleKeyboardNavigation(event) {
+  // 如果搜索框有焦点，不进行书签导航
+  if (document.activeElement === document.getElementById("searchInput")) {
+    return;
+  }
+
+  // 如果没有可见书签，不进行处理
+  if (visibleBookmarks.length === 0) return;
+
+  switch (event.key) {
+    case "ArrowRight":
+      // 如果没有焦点项，设置第一个
+      if (focusedBookmarkIndex === -1) {
+        setFocusedBookmark(0);
+      } else {
+        // 计算下一个索引，循环到开头
+        const nextIndex = (focusedBookmarkIndex + 1) % visibleBookmarks.length;
+        setFocusedBookmark(nextIndex);
+      }
+      event.preventDefault();
+      break;
+
+    case "ArrowLeft":
+      // 如果没有焦点项，设置最后一个
+      if (focusedBookmarkIndex === -1) {
+        setFocusedBookmark(visibleBookmarks.length - 1);
+      } else {
+        // 计算上一个索引，循环到末尾
+        const prevIndex =
+          (focusedBookmarkIndex - 1 + visibleBookmarks.length) %
+          visibleBookmarks.length;
+        setFocusedBookmark(prevIndex);
+      }
+      event.preventDefault();
+      break;
+
+    case "ArrowDown":
+      // 计算下一行的同一列位置
+      if (focusedBookmarkIndex !== -1) {
+        // 获取当前网格列数
+        const gridComputedStyle = window.getComputedStyle(
+          document.querySelector(".bookmarks-grid")
+        );
+        const columnsMatch =
+          gridComputedStyle.gridTemplateColumns.match(/1fr/g);
+        const columns = columnsMatch ? columnsMatch.length : 6; // 默认6列
+
+        const nextRowIndex = focusedBookmarkIndex + columns;
+        if (nextRowIndex < visibleBookmarks.length) {
+          setFocusedBookmark(nextRowIndex);
+        }
+        event.preventDefault();
+      }
+      break;
+
+    case "ArrowUp":
+      // 计算上一行的同一列位置
+      if (focusedBookmarkIndex !== -1) {
+        // 获取当前网格列数
+        const gridComputedStyle = window.getComputedStyle(
+          document.querySelector(".bookmarks-grid")
+        );
+        const columnsMatch =
+          gridComputedStyle.gridTemplateColumns.match(/1fr/g);
+        const columns = columnsMatch ? columnsMatch.length : 6; // 默认6列
+
+        const prevRowIndex = focusedBookmarkIndex - columns;
+        if (prevRowIndex >= 0) {
+          setFocusedBookmark(prevRowIndex);
+        }
+        event.preventDefault();
+      }
+      break;
+
+    case "Enter":
+      // 打开焦点书签
+      if (
+        focusedBookmarkIndex !== -1 &&
+        visibleBookmarks[focusedBookmarkIndex]
+      ) {
+        const url = visibleBookmarks[focusedBookmarkIndex].dataset.url;
+        if (url) {
+          window.open(url, "_blank");
+        }
+        event.preventDefault();
+      }
+      break;
+
+    case "Escape":
+      // 清除焦点
+      if (focusedBookmarkIndex !== -1) {
+        visibleBookmarks[focusedBookmarkIndex].classList.remove(
+          "keyboard-focus"
+        );
+        visibleBookmarks[focusedBookmarkIndex].setAttribute("tabindex", "-1");
+        focusedBookmarkIndex = -1;
+        // 将焦点返回到搜索框
+        document.getElementById("searchInput").focus();
+        event.preventDefault();
+      }
+      break;
+  }
+}
+
+// 渲染空状态
+function renderEmptyState(container, message, iconType) {
+  const icons = {
+    bookmarks: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>`,
+    search: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+    error: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
+  };
+
+  const icon = icons[iconType] || icons.bookmarks;
+
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">${icon}</div>
+      <div class="empty-state-message">${message}</div>
+    </div>
+  `;
+}
+
+// 添加动画效果管理器
+const AnimationManager = {
+  // 添加元素进入动画
+  fadeIn: (element, delay = 0) => {
+    if (!element) return;
+
+    element.style.opacity = "0";
+    element.style.transform = "translateY(20px)";
+    element.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+
+    setTimeout(() => {
+      element.style.opacity = "1";
+      element.style.transform = "translateY(0)";
+    }, delay);
+  },
+
+  // 添加书签项动画
+  animateBookmarkItems: () => {
+    const items = document.querySelectorAll(".bookmark-item");
+    items.forEach((item, index) => {
+      AnimationManager.fadeIn(item, index * 50);
+    });
+  },
+
+  // 添加加载动画
+  addLoadingAnimation: (element) => {
+    if (!element) return;
+
+    element.classList.add("loading-animation");
+    const loader = document.createElement("div");
+    loader.className = "loader-overlay";
+    loader.innerHTML = `
+      <div class="loader-spinner"></div>
+    `;
+    element.appendChild(loader);
+  },
+
+  // 移除加载动画
+  removeLoadingAnimation: (element) => {
+    if (!element) return;
+
+    element.classList.remove("loading-animation");
+    const loader = element.querySelector(".loader-overlay");
+    if (loader) {
+      loader.addEventListener("transitionend", () => loader.remove());
+      loader.style.opacity = "0";
+    }
+  },
+};
+
+// 添加可访问性辅助函数
+const A11yHelper = {
+  // 添加ARIA标签
+  setAriaLabels: () => {
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+      searchInput.setAttribute("role", "searchbox");
+      searchInput.setAttribute("aria-label", "搜索书签");
+    }
+
+    document.querySelectorAll(".bookmark-item").forEach((item) => {
+      item.setAttribute("role", "link");
+      item.setAttribute(
+        "aria-label",
+        `访问 ${item.querySelector(".bookmark-title").textContent}`
+      );
+    });
+  },
+
+  // 添加键盘快捷键
+  setupKeyboardShortcuts: () => {
+    document.addEventListener("keydown", (e) => {
+      // Alt + / 聚焦搜索框
+      if (e.key === "/" && e.altKey) {
+        e.preventDefault();
+        document.getElementById("searchInput")?.focus();
+      }
+
+      // Esc 清除搜索
+      if (
+        e.key === "Escape" &&
+        document.activeElement === document.getElementById("searchInput")
+      ) {
+        handleClearSearch();
+      }
+    });
+  },
+
+  // 添加焦点指示器
+  setupFocusIndicators: () => {
+    // 添加焦点样式类
+    document.body.classList.add("js-focus-visible");
+
+    // 监听Tab键使用
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        document.body.classList.add("user-is-tabbing");
+      }
+    });
+
+    // 监听鼠标使用
+    document.addEventListener("mousedown", () => {
+      document.body.classList.remove("user-is-tabbing");
+    });
+  },
+};
+
+// 修改renderBookmarks函数，移除复制和分享按钮
 function renderBookmarks(bookmarksToShow) {
   const container = document.getElementById("bookmarksList");
   if (!container) return;
 
   try {
+    // 处理空书签情况
+    if (!bookmarksToShow || bookmarksToShow.length === 0) {
+      renderEmptyState(
+        container,
+        "没有找到书签。通过浏览器添加书签后会显示在这里。",
+        "bookmarks"
+      );
+      return;
+    }
+
+    // 添加加载动画
+    AnimationManager.addLoadingAnimation(container);
+
+    // 渲染书签内容
     container.innerHTML = bookmarksToShow
       .map((bookmark) => {
         const url = escapeHtml(bookmark.url);
@@ -144,31 +604,119 @@ function renderBookmarks(bookmarksToShow) {
         const faviconData = getFaviconUrl(bookmark.url);
         const initialFaviconUrl =
           typeof faviconData === "string" ? faviconData : faviconData.url;
+        const previewUrl = getWebsitePreviewUrl(bookmark.url);
 
         return `
-          <div class="bookmark-item" data-url="${url}">
-            <div class="bookmark-icon">
-              <img src="${initialFaviconUrl}" 
+          <div class="bookmark-item" data-url="${url}" tabindex="-1">
+            <div class="bookmark-header">
+              <div class="bookmark-icon">
+                <img src="${initialFaviconUrl}" 
+                     data-url="${url}"
+                     data-fallback-index="-1"
+                     alt="favicon" />
+              </div>
+              <div class="bookmark-content">
+                <div class="bookmark-title">${title}</div>
+                <div class="bookmark-url">${url}</div>
+              </div>
+            </div>
+            ${
+              previewUrl
+                ? `
+            <div class="bookmark-preview">
+              <div class="preview-skeleton"></div>
+              <img class="preview-image" 
+                   alt="网站预览" 
+                   data-src="${previewUrl}" 
                    data-url="${url}"
-                   data-fallback-index="-1"
-                   alt="favicon" />
-            </div>
-            <div class="bookmark-content">
-              <div class="bookmark-title">${title}</div>
-              <div class="bookmark-url">${url}</div>
-            </div>
+                   loading="lazy" />
+            </div>`
+                : `<div class="bookmark-preview no-preview"></div>`
+            }
           </div>
         `;
       })
       .join("");
 
-    // 为所有图片添加错误处理
-    container.querySelectorAll("img").forEach((img) => {
+    // 移除加载动画并添加元素进入动画
+    AnimationManager.removeLoadingAnimation(container);
+    AnimationManager.animateBookmarkItems();
+
+    // 为所有favicon图片添加错误处理
+    container.querySelectorAll(".bookmark-icon img").forEach((img) => {
       img.addEventListener("error", () => handleImageError(img));
     });
+
+    // 使用Intersection Observer观察所有预览图容器
+    if (imageObserver) {
+      container
+        .querySelectorAll(".bookmark-preview:not(.no-preview)")
+        .forEach((preview) => {
+          imageObserver.observe(preview);
+        });
+    }
+
+    // 为所有预览图添加事件监听器
+    container.querySelectorAll(".preview-image").forEach((img) => {
+      img.addEventListener("load", function () {
+        if (this.parentElement) {
+          this.parentElement.classList.add("loaded");
+          this.parentElement.classList.add("ripple-effect");
+          setTimeout(() => {
+            this.parentElement.classList.remove("ripple-effect");
+          }, 800);
+        }
+
+        const url = this.dataset.url;
+        if (url && this.src) {
+          updatePreviewCache(url, this.src);
+        }
+      });
+
+      img.addEventListener("error", function () {
+        const url = this.dataset.url;
+        if (url) {
+          handlePreviewError(this, url);
+        }
+      });
+    });
+
+    // 添加书签项点击事件处理
+    container.querySelectorAll(".bookmark-item").forEach((item) => {
+      // 点击事件和波纹效果
+      item.addEventListener("click", (e) => {
+        const ripple = document.createElement("span");
+        ripple.classList.add("ripple");
+        item.appendChild(ripple);
+
+        const rect = item.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        ripple.style.width = ripple.style.height = `${size}px`;
+
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+        ripple.style.left = `${x}px`;
+        ripple.style.top = `${y}px`;
+
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+
+        const url = item.dataset.url;
+        if (url) {
+          window.open(url, "_blank");
+        }
+      });
+    });
+
+    // 更新键盘导航的书签列表
+    updateNavigableBookmarks();
+
+    // 在渲染完成后更新ARIA标签
+    A11yHelper.setAriaLabels();
   } catch (error) {
     console.error("Error rendering bookmarks:", error);
-    container.innerHTML = '<div class="error">Error rendering bookmarks</div>';
+    renderEmptyState(container, "加载书签时出错，请刷新页面重试。", "error");
   }
 }
 
@@ -196,8 +744,11 @@ function showSearchResults(query) {
     const filtered = filterBookmarks(query, false);
 
     if (filtered.length === 0) {
-      searchResults.innerHTML =
-        '<div class="no-results">No results found</div>';
+      renderEmptyState(
+        searchResults,
+        `没有找到与 "${query}" 相关的书签。`,
+        "search"
+      );
       searchResults.classList.add("visible");
       return;
     }
@@ -212,17 +763,35 @@ function showSearchResults(query) {
       const initialFaviconUrl =
         typeof faviconData === "string" ? faviconData : faviconData.url;
 
+      // 获取预览图
+      const previewUrl = getWebsitePreviewUrl(bookmark.url);
+
       item.innerHTML = `
-        <div class="bookmark-icon">
-          <img src="${initialFaviconUrl}" 
+        <div class="search-result-header">
+          <div class="bookmark-icon">
+            <img src="${initialFaviconUrl}" 
+                 data-url="${bookmark.url}"
+                 data-fallback-index="-1"
+                 alt="favicon" />
+          </div>
+          <div class="bookmark-content">
+            <div class="title">${escapeHtml(bookmark.title)}</div>
+            <div class="url">${escapeHtml(bookmark.url)}</div>
+          </div>
+        </div>
+        ${
+          previewUrl
+            ? `
+        <div class="search-result-preview">
+          <div class="preview-skeleton"></div>
+          <img src="${previewUrl}" 
+               alt="网站预览" 
+               class="preview-image" 
                data-url="${bookmark.url}"
-               data-fallback-index="-1"
-               alt="favicon" />
-        </div>
-        <div class="bookmark-content">
-          <div class="title">${escapeHtml(bookmark.title)}</div>
-          <div class="url">${escapeHtml(bookmark.url)}</div>
-        </div>
+               loading="lazy" />
+        </div>`
+            : ``
+        }
       `;
 
       item.addEventListener("click", () => {
@@ -231,9 +800,34 @@ function showSearchResults(query) {
       searchResults.appendChild(item);
     });
 
-    // 为搜索结果中的所有图片添加错误处理
-    searchResults.querySelectorAll("img").forEach((img) => {
+    // 为所有favicon图片添加错误处理
+    searchResults.querySelectorAll(".bookmark-icon img").forEach((img) => {
       img.addEventListener("error", () => handleImageError(img));
+    });
+
+    // 为所有预览图添加加载成功处理，更新缓存
+    searchResults.querySelectorAll(".preview-image").forEach((img) => {
+      // 添加load事件监听器
+      img.addEventListener("load", function () {
+        // 加载成功后更新UI
+        if (this.parentElement) {
+          this.parentElement.classList.add("loaded");
+        }
+
+        // 更新缓存
+        const url = this.dataset.url;
+        if (url && this.src) {
+          updatePreviewCache(url, this.src);
+        }
+      });
+
+      // 添加error事件监听器
+      img.addEventListener("error", function () {
+        const url = this.dataset.url;
+        if (url) {
+          handlePreviewError(this, url);
+        }
+      });
     });
 
     searchResults.classList.add("visible");
@@ -522,20 +1116,90 @@ function createLoadingElement() {
 
 // 在获取书签时使用
 async function initializeBookmarks() {
-  showLoading(true);
   try {
-    await new Promise((resolve) => {
-      chrome.bookmarks.getTree((bookmarkTree) => {
-        if (!bookmarkTree) throw new Error("Failed to get bookmarks");
-        allBookmarks = sortBookmarks(flattenBookmarks(bookmarkTree));
+    showLoading(true);
+
+    // 初始化功能
+    init();
+
+    // 获取书签
+    chrome.bookmarks.getTree(async (bookmarkTreeNodes) => {
+      try {
+        allBookmarks = sortBookmarks(flattenBookmarks(bookmarkTreeNodes));
         updateBookmarkCount(allBookmarks.length);
         renderBookmarks(allBookmarks);
-        resolve();
-      });
+      } catch (error) {
+        handleError(error, "初始化书签时出错");
+      } finally {
+        showLoading(false);
+      }
     });
   } catch (error) {
-    handleError(error, "获取书签");
-  } finally {
+    handleError(error, "初始化书签时出错");
     showLoading(false);
   }
+}
+
+// 修改init函数，添加可访问性初始化
+function init() {
+  setupIntersectionObserver();
+
+  // 初始化事件监听
+  initEventListeners();
+
+  // 初始化可访问性功能
+  A11yHelper.setAriaLabels();
+  A11yHelper.setupKeyboardShortcuts();
+  A11yHelper.setupFocusIndicators();
+
+  // 添加主题切换按钮的可访问性
+  const themeSwitcher = document.querySelector(".theme-switcher");
+  if (themeSwitcher) {
+    themeSwitcher.setAttribute("role", "radiogroup");
+    themeSwitcher.setAttribute("aria-label", "选择主题");
+
+    themeSwitcher.querySelectorAll(".theme-btn").forEach((btn) => {
+      btn.setAttribute("role", "radio");
+      btn.setAttribute("aria-checked", btn.classList.contains("active"));
+    });
+  }
+
+  // 监听主题变化
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  mediaQuery.addListener((e) => {
+    const theme = e.matches ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", theme);
+    updateThemeButtons(theme);
+  });
+}
+
+// 更新主题按钮状态
+function updateThemeButtons(theme) {
+  document.querySelectorAll(".theme-btn").forEach((btn) => {
+    const isActive = btn.dataset.theme === theme;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-checked", isActive);
+  });
+}
+
+// 修改showToast函数，添加可访问性支持
+function showToast(message, duration = 3000) {
+  const toast = document.createElement("div");
+  toast.className = "toast-message";
+  toast.setAttribute("role", "alert");
+  toast.setAttribute("aria-live", "polite");
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.addEventListener("transitionend", () => {
+      toast.remove();
+    });
+  }, duration);
 }

@@ -2,6 +2,7 @@
     --background: #ffffff;
     --text: #1a1a1a;
     --card-bg: #f5f5f5;
+    --card-bg-rgb: 245, 245, 245;
     --hover: #e0e0e0;
     --accent: #f59e0b;
     --shadow: rgba(0, 0, 0, 0.1);
@@ -11,6 +12,7 @@
     --background: #1a1a1a;
     --text: #ffffff;
     --card-bg: #2d2d2d;
+    --card-bg-rgb: 45, 45, 45;
     --hover: #3d3d3d;
     --shadow: rgba(0, 0, 0, 0.3);
 }
@@ -27,7 +29,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 0 16px;
     display: flex;
@@ -92,7 +94,8 @@ body {
 /* 搜索相关样式 */
 .search-container {
     position: relative;
-    max-width: 800px;
+    max-width: 100%;
+    width: 70%;
     margin: 0 auto 20px;
     padding: 0 16px;
 }
@@ -106,18 +109,19 @@ body {
     width: 100%;
     box-sizing: border-box;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 10px;
     border: 1px solid var(--hover);
     background-color: var(--card-bg);
     color: var(--text);
     font-size: 16px;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    height: 48px;
 }
 
 #searchInput:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 .clear-button,
@@ -155,25 +159,38 @@ body {
 /* 书签网格样式 */
 .bookmarks-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 16px;
     padding: 16px;
     margin: 0 auto;
-    max-width: 1200px;
+    max-width: 1400px;
 }
 
 .bookmark-item {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
     background-color: var(--card-bg);
     border: 1px solid var(--hover);
-    border-radius: 8px;
-    padding: 12px;
-    height: 72px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 12px;
+    padding: 14px;
+    height: auto;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        border-color 0.2s ease;
     cursor: pointer;
     min-width: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.bookmark-item .bookmark-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
 .bookmark-icon img {
@@ -233,8 +250,20 @@ body {
 }
 
 .bookmark-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px var(--shadow);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 8px 16px var(--shadow);
+    border-color: var(--accent);
+}
+
+.bookmark-item:active {
+    transform: translateY(-2px) scale(0.99);
+    transition: transform 0.1s ease;
+}
+
+/* 添加书签卡片聚焦状态 */
+.bookmark-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 8px 16px var(--shadow);
 }
 
 /* 主题切换器样式 */
@@ -329,55 +358,65 @@ body {
     left: 0;
     right: 0;
     width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    max-height: 400px;
     background-color: var(--card-bg);
-    border-radius: 6px;
-    box-shadow: 0 0 0 1px var(--shadow), 0 4px 6px -1px var(--shadow);
-    z-index: 50;
-    display: none;
-    border: 1px solid var(--hover);
-    padding: 4px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px var(--shadow);
+    overflow-y: auto;
+    z-index: 100;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
 }
 
 .search-results.visible {
-    display: block;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .search-result-item {
     display: flex;
+    flex-direction: column;
+    padding: 12px;
+    border-bottom: 1px solid var(--hover);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.search-result-header {
+    display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: var(--transition);
-    width: 100%;
-    box-sizing: border-box;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
 }
 
 .search-result-item .bookmark-icon {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
 }
 
 .search-result-item .bookmark-icon img {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     border-radius: 4px;
     background: var(--card-bg);
     transition: opacity 0.2s ease;
 }
 
-/* 确保搜索结果中的默认图标也有正确的样式 */
 .search-result-item .bookmark-icon img[src*="data:image"],
 .search-result-item .bookmark-icon img.default-icon {
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 .search-result-item .bookmark-content {
@@ -386,6 +425,50 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.search-result-preview {
+    width: 100%;
+    margin-top: 8px;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 6px;
+    position: relative;
+    background-color: var(--hover);
+}
+
+.search-result-preview .preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease, opacity 0.2s ease;
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.search-result-preview.loaded .preview-image {
+    opacity: 1;
+}
+
+.search-result-preview .preview-skeleton {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            var(--card-bg) 25%,
+            var(--hover) 50%,
+            var(--card-bg) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+.search-result-preview.loaded .preview-skeleton {
+    display: none;
 }
 
 .search-result-item:hover,
@@ -399,6 +482,12 @@ body {
 }
 
 /* 响应式设计 */
+@media (max-width: 1400px) {
+    .bookmarks-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
 @media (max-width: 1200px) {
     .bookmarks-grid {
         grid-template-columns: repeat(4, 1fr);
@@ -416,11 +505,31 @@ body {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
+
+    .bookmark-actions {
+        opacity: 1;
+        transform: translateY(0);
+        background: rgba(var(--card-bg-rgb), 0.8);
+        backdrop-filter: blur(4px);
+        padding: 4px;
+        border-radius: 8px;
+    }
+
+    /* 调整搜索框在小屏幕上的宽度 */
+    .search-container {
+        width: 90%;
+        padding: 0 8px;
+    }
 }
 
 @media (max-width: 480px) {
     .bookmarks-grid {
         grid-template-columns: 1fr;
+    }
+
+    .search-container {
+        width: 100%;
+        padding: 0 4px;
     }
 }
 
@@ -482,4 +591,421 @@ body {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* 网站预览图样式 */
+.bookmark-preview {
+    width: 100%;
+    margin-top: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 160px;
+    position: relative;
+    background-color: var(--card-bg);
+    border: 1px solid var(--hover);
+    transition: transform 0.3s ease;
+}
+
+.bookmark-preview.loaded {
+    border-color: transparent;
+    animation: preview-loaded-scale 0.4s ease forwards;
+}
+
+.preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.4s ease;
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.bookmark-preview.loaded .preview-image {
+    opacity: 1;
+}
+
+/* 预览图加载状态 */
+.preview-skeleton {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            var(--card-bg) 0%,
+            var(--hover) 40%,
+            var(--card-bg) 80%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+    border-radius: 10px;
+}
+
+.bookmark-preview.loaded .preview-skeleton {
+    display: none;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* 无预览状态 */
+.bookmark-preview.no-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--text);
+    opacity: 0.6;
+    height: 120px;
+}
+
+.bookmark-preview.no-preview::before {
+    content: "";
+    width: 28px;
+    height: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-bottom: 10px;
+    opacity: 0.6;
+}
+
+.bookmark-preview.no-preview::after {
+    content: "无预览";
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* 正在加载预览 */
+.bookmark-preview.loading-preview .preview-skeleton {
+    display: block;
+}
+
+.bookmark-preview.loading-preview::after {
+    content: "加载中...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    background-color: var(--card-bg);
+    padding: 6px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px var(--shadow);
+}
+
+.bookmark-item:hover .bookmark-preview {
+    transform: scale(1.02);
+}
+
+/* 波纹效果 */
+.ripple {
+    position: absolute;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+    mix-blend-mode: overlay;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* 预览图加载完成动画 */
+.bookmark-preview.ripple-effect::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    animation: preview-loaded 0.8s ease-out;
+}
+
+@keyframes preview-loaded {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 0.8;
+    }
+
+    100% {
+        width: 150%;
+        height: 150%;
+        opacity: 0;
+    }
+}
+
+/* 空状态样式 */
+.empty-state {
+    width: 100%;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text);
+    opacity: 0.7;
+}
+
+.empty-state-icon {
+    margin-bottom: 16px;
+    color: var(--text);
+    opacity: 0.5;
+}
+
+.empty-state-message {
+    font-size: 16px;
+    font-weight: 500;
+    max-width: 400px;
+}
+
+/* 键盘导航焦点样式 */
+.bookmark-item.keyboard-focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 8px 16px var(--shadow);
+    border-color: var(--accent);
+    position: relative;
+    z-index: 10;
+}
+
+.bookmark-item.keyboard-focus::before {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 14px;
+    background: transparent;
+    z-index: -1;
+}
+
+/* 修复书签布局在键盘导航时的问题 */
+.bookmarks-grid:focus-within {
+    outline: none;
+}
+
+/* 搜索结果空状态 */
+.no-results {
+    padding: 24px;
+    text-align: center;
+    color: var(--text);
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+/* 改进搜索结果项的键盘导航 */
+.search-result-item:focus {
+    outline: none;
+    background-color: var(--hover);
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* 删除书签操作按钮样式 */
+.bookmark-actions {
+    display: none;
+}
+
+.action-button {
+    display: none;
+}
+
+/* 确保足够的点击区域 - 修改 */
+.theme-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+}
+
+/* 加载动画样式 */
+.loading-animation {
+    position: relative;
+    min-height: 200px;
+}
+
+.loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.loader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--card-bg);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* 提示消息样式 */
+.toast-message {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    background: var(--card-bg);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow);
+    z-index: 1000;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toast-message.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* 可访问性样式 */
+.user-is-tabbing *:focus {
+    outline: 2px solid var(--accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2) !important;
+}
+
+/* 隐藏非活动焦点轮廓 */
+*:focus:not(:focus-visible) {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 跳过导航链接 */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent);
+    color: white;
+    padding: 8px;
+    z-index: 100;
+    transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* 提高对比度 */
+.bookmark-url,
+.search-result-item .url {
+    color: var(--text);
+    opacity: 0.7;
+}
+
+/* 改进焦点状态 */
+.bookmark-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 8px 16px var(--shadow);
+    transform: translateY(-4px);
+}
+
+.action-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 4px 8px var(--shadow);
+}
+
+/* 主题切换按钮可访问性 */
+.theme-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* 搜索框可访问性 */
+#searchInput:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+/* 减少动画，如果用户设置了偏好 */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .bookmark-item,
+    .bookmark-preview,
+    .action-button,
+    .toast-message {
+        transition: none !important;
+    }
+
+    .bookmark-item:hover {
+        transform: none !important;
+    }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: more) {
+    :root {
+        --accent: #d97706;
+        --text: #000000;
+        --background: #ffffff;
+        --card-bg: #f8f8f8;
+        --hover: #e5e5e5;
+    }
+
+    [data-theme="dark"] {
+        --text: #ffffff;
+        --background: #000000;
+        --card-bg: #1a1a1a;
+        --hover: #2d2d2d;
+    }
+
+    .bookmark-url,
+    .search-result-item .url {
+        opacity: 0.85;
+    }
+}
+
+/* 提高可读性 */
+.bookmark-title,
+.search-result-item .title {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* 确保足够的文本间距 */
+.bookmark-content,
+.search-result-item .bookmark-content {
+    line-height: 1.5;
 }
