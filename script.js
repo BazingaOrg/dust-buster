@@ -577,6 +577,9 @@ const A11yHelper = {
   },
 };
 
+// 添加一个标志变量来跟踪是否正在处理点击事件
+let isProcessingClick = false;
+
 // 修改renderBookmarks函数，移除复制和分享按钮
 function renderBookmarks(bookmarksToShow) {
   const container = document.getElementById("bookmarksList");
@@ -681,34 +684,6 @@ function renderBookmarks(bookmarksToShow) {
       });
     });
 
-    // 添加书签项点击事件处理
-    container.querySelectorAll(".bookmark-item").forEach((item) => {
-      // 点击事件和波纹效果
-      item.addEventListener("click", (e) => {
-        const ripple = document.createElement("span");
-        ripple.classList.add("ripple");
-        item.appendChild(ripple);
-
-        const rect = item.getBoundingClientRect();
-        const size = Math.max(rect.width, rect.height);
-        ripple.style.width = ripple.style.height = `${size}px`;
-
-        const x = e.clientX - rect.left - size / 2;
-        const y = e.clientY - rect.top - size / 2;
-        ripple.style.left = `${x}px`;
-        ripple.style.top = `${y}px`;
-
-        setTimeout(() => {
-          ripple.remove();
-        }, 600);
-
-        const url = item.dataset.url;
-        if (url) {
-          window.open(url, "_blank");
-        }
-      });
-    });
-
     // 更新键盘导航的书签列表
     updateNavigableBookmarks();
 
@@ -794,9 +769,6 @@ function showSearchResults(query) {
         }
       `;
 
-      item.addEventListener("click", () => {
-        window.open(bookmark.url, "_blank");
-      });
       searchResults.appendChild(item);
     });
 
@@ -1029,8 +1001,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 初始化时隐藏清除按钮
   toggleClearButton(searchInput, clearButton);
 
-  // 使用事件委托优化所有事件监听
-  initEventListeners();
+  // 不在这里调用initEventListeners，避免重复添加事件监听器
+  // initEventListeners();
 });
 
 // 添加全局错误处理函数
@@ -1057,11 +1029,56 @@ function initEventListeners() {
 
   // 统一处理点击事件
   container.addEventListener("click", (e) => {
+    console.log("Container click event", e.target);
+
+    // 如果已经在处理点击事件，则直接返回
+    if (isProcessingClick) {
+      console.log("Already processing click, ignoring");
+      return;
+    }
+
     // 处理书签点击
-    const bookmarkItem = e.target.closest(".bookmark-item");
+    const bookmarkItem = e.target.closest(
+      ".bookmark-item, .search-result-item"
+    );
     if (bookmarkItem) {
+      // 标记正在处理点击事件
+      isProcessingClick = true;
+
+      // 阻止事件传播
+      e.stopPropagation();
+
+      // 添加波纹效果
+      const ripple = document.createElement("span");
+      ripple.classList.add("ripple");
+      bookmarkItem.appendChild(ripple);
+
+      const rect = bookmarkItem.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = `${size}px`;
+
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+
+      // 移除波纹效果
+      setTimeout(() => {
+        ripple.remove();
+      }, 600);
+
+      // 打开URL
       const url = bookmarkItem.dataset.url;
-      if (url) window.open(url, "_blank");
+      if (url) {
+        console.log("Opening URL:", url);
+        window.open(url, "_blank");
+      }
+
+      // 设置一个短暂的超时，避免事件重复触发
+      setTimeout(() => {
+        isProcessingClick = false;
+      }, 100);
+
       return;
     }
 
