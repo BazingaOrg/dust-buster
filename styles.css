@@ -440,7 +440,7 @@ body {
 .search-result-preview .preview-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transition: transform 0.3s ease, opacity 0.2s ease;
     opacity: 0;
     position: absolute;
@@ -614,7 +614,7 @@ body {
 .preview-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transition: opacity 0.4s ease;
     opacity: 0;
     position: absolute;

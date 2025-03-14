@@ -121,7 +121,7 @@ function getWebsitePreviewUrl(url) {
     }
 
     // 一般网站使用图像服务
-    return `https://image.thum.io/get/width/400/crop/800/noanimate/${url}`;
+    return `https://image.thum.io/get/width/400/noanimate/${url}`;
   } catch (e) {
     console.error("Error getting website preview:", e);
     return null;
@@ -462,12 +462,18 @@ function renderEmptyState(container, message, iconType) {
 
   const icon = icons[iconType] || icons.bookmarks;
 
+  // 保存原始类名
+  const originalClasses = container.className;
+
   container.innerHTML = `
     <div class="empty-state">
       <div class="empty-state-icon">${icon}</div>
       <div class="empty-state-message">${message}</div>
     </div>
   `;
+
+  // 恢复原始类名
+  container.className = originalClasses;
 }
 
 // 添加动画效果管理器
@@ -586,6 +592,11 @@ function renderBookmarks(bookmarksToShow) {
   if (!container) return;
 
   try {
+    // 确保容器有正确的类名
+    if (!container.classList.contains("bookmarks-grid")) {
+      container.classList.add("bookmarks-grid");
+    }
+
     // 处理空书签情况
     if (!bookmarksToShow || bookmarksToShow.length === 0) {
       renderEmptyState(
@@ -927,6 +938,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   const handleSearch = debounce((query) => {
     toggleClearButton(searchInput, clearButton);
     showSearchResults(query);
+
+    // 同时更新主书签列表
+    if (query) {
+      const filtered = filterBookmarks(query, false);
+      renderBookmarks(filtered);
+      updateBookmarkCount(filtered.length);
+    } else {
+      renderBookmarks(allBookmarks);
+      updateBookmarkCount(allBookmarks.length);
+    }
   }, 300);
 
   searchInput.addEventListener("input", (e) => {
