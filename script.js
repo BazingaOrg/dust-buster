@@ -1241,3 +1241,133 @@ function showToast(message, duration = 3000) {
     });
   }, duration);
 }
+
+// Blob Cursor
+function initBlobCursor() {
+  const cursorBlobs = document.querySelectorAll(".cursor-blob");
+  const cursorContainer = document.getElementById("blob-cursor");
+  const cursorMain = document.querySelector(".cursor-main");
+
+  // 检查元素是否存在
+  if (!cursorBlobs.length || !cursorContainer || !cursorMain) {
+    console.warn("Blob cursor elements not found");
+    return;
+  }
+
+  // 初始化位置数组
+  const blobPositions = [];
+  const targetPositions = [];
+
+  for (let i = 0; i < cursorBlobs.length; i++) {
+    blobPositions.push({ x: 0, y: 0 });
+    targetPositions.push({ x: 0, y: 0 });
+  }
+
+  // 配置参数
+  const configs = [
+    { tension: 0.4, friction: 0.7 }, // 快速跟随
+    { tension: 0.1, friction: 0.9 }, // 慢速跟随
+    { tension: 0.2, friction: 0.8 }, // 中等速度
+  ];
+
+  function lerp(start, end, factor) {
+    return start + (end - start) * factor;
+  }
+
+  function updateBlobPositions() {
+    cursorBlobs.forEach((blob, index) => {
+      const config = configs[index % configs.length];
+
+      // 根据张力和摩擦力更新位置
+      blobPositions[index].x = lerp(
+        blobPositions[index].x,
+        targetPositions[index].x,
+        config.tension
+      );
+
+      blobPositions[index].y = lerp(
+        blobPositions[index].y,
+        targetPositions[index].y,
+        config.tension
+      );
+
+      // 应用位置
+      blob.style.transform = `translate3d(${blobPositions[index].x}px, ${blobPositions[index].y}px, 0) translate3d(-50%, -50%, 0)`;
+    });
+
+    requestAnimationFrame(updateBlobPositions);
+  }
+
+  function handleMouseMove(e) {
+    const x = e.clientX;
+    const y = e.clientY;
+
+    // 主体跟随鼠标
+    targetPositions[0].x = x;
+    targetPositions[0].y = y;
+
+    // 其他blob有延迟跟随
+    for (let i = 1; i < targetPositions.length; i++) {
+      targetPositions[i].x = x;
+      targetPositions[i].y = y;
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (e.touches && e.touches[0]) {
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+
+      targetPositions[0].x = x;
+      targetPositions[0].y = y;
+
+      for (let i = 1; i < targetPositions.length; i++) {
+        targetPositions[i].x = x;
+        targetPositions[i].y = y;
+      }
+    }
+  }
+
+  // 初始化动画
+  updateBlobPositions();
+
+  // 事件监听
+  document.addEventListener("mousemove", handleMouseMove);
+  document.addEventListener("touchmove", handleTouchMove);
+
+  // 当鼠标离开页面时，隐藏光标
+  document.addEventListener("mouseleave", () => {
+    cursorContainer.style.opacity = "0";
+  });
+
+  document.addEventListener("mouseenter", () => {
+    cursorContainer.style.opacity = "1";
+  });
+
+  // 在可交互元素上增加交互效果
+  const interactiveElements = document.querySelectorAll(
+    "a, button, input, select, textarea"
+  );
+  interactiveElements.forEach((el) => {
+    el.addEventListener("mouseenter", () => {
+      cursorBlobs.forEach((blob) => {
+        blob.style.transform = `scale(1.2) translate3d(${blobPositions[0].x}px, ${blobPositions[0].y}px, 0) translate3d(-50%, -50%, 0)`;
+        blob.style.backgroundColor = "var(--accent)";
+      });
+    });
+
+    el.addEventListener("mouseleave", () => {
+      cursorBlobs.forEach((blob, index) => {
+        blob.style.transform = `translate3d(${blobPositions[index].x}px, ${blobPositions[index].y}px, 0) translate3d(-50%, -50%, 0)`;
+        blob.style.backgroundColor = "var(--accent)";
+        blob.style.opacity = "0.6";
+      });
+    });
+  });
+}
+
+// 确保在DOM加载完成后初始化所有功能
+window.addEventListener("DOMContentLoaded", () => {
+  // 初始化光标
+  initBlobCursor();
+});
