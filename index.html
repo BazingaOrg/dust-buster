@@ -112,23 +112,8 @@
       <div id="bookmarksList" class="bookmarks-grid"></div>
     </div>
 
-    <!-- Blob Cursor -->
-    <div id="blob-cursor">
-      <svg>
-        <filter id="blob">
-          <feGaussianBlur in="SourceGraphic" result="blur" stdDeviation="30" />
-          <feColorMatrix
-            in="blur"
-            values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 35 -10"
-          />
-        </filter>
-      </svg>
-      <div class="cursor-main">
-        <div class="cursor-blob"></div>
-        <div class="cursor-blob"></div>
-        <div class="cursor-blob"></div>
-      </div>
-    </div>
+    <!-- Fluid Cursor -->
+    <canvas id="fluid"></canvas>
 
     <script src="script.js"></script>
   </body>

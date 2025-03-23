@@ -26,6 +26,7 @@ body {
     font-family: system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
+    cursor: none;
 }
 
 .container {
@@ -1008,103 +1009,38 @@ html:not([data-theme="dark"]) .theme-btn[data-theme="dark"] svg {
     line-height: 1.5;
 }
 
-/* Blob Cursor Styles */
-#blob-cursor {
+/* Fluid Cursor Styles */
+#fluid {
     position: fixed;
     top: 0;
     left: 0;
     z-index: 999;
     pointer-events: none;
-    will-change: transform;
-    overflow: hidden;
-    height: 100vh;
     width: 100vw;
-    transition: opacity 0.3s ease;
+    height: 100vh;
 }
 
-#blob-cursor svg {
-    position: absolute;
-    width: 0;
-    height: 0;
-}
-
-.cursor-blob {
-    position: absolute;
-    will-change: transform;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
-    opacity: 0.6;
-    transform: translate3d(0, 0, 0) translate3d(-50%, -50%, 0);
-    transition: background-color 0.5s ease;
-}
-
-.cursor-blob:nth-child(1) {
-    width: 60px;
-    height: 60px;
-}
-
-.cursor-blob:nth-child(2) {
-    width: 125px;
-    height: 125px;
-}
-
-.cursor-blob:nth-child(3) {
-    width: 75px;
-    height: 75px;
-}
-
-.cursor-blob::after {
-    content: '';
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(255, 0, 0, 0.8);
-}
-
-.cursor-blob:nth-child(2)::after {
-    top: 35px;
-    left: 35px;
-    width: 35px;
-    height: 35px;
-}
-
-.cursor-blob:nth-child(3)::after {
-    top: 25px;
-    left: 25px;
-    width: 25px;
-    height: 25px;
-}
-
-.cursor-main {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    filter: url('#blob');
-    overflow: hidden;
-    background: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+/* 隐藏原生鼠标光标 */
+body {
     cursor: none;
 }
 
-/* 让网页中的其他元素在光标悬浮时有交互效果 */
-a:hover~#blob-cursor .cursor-blob,
-button:hover~#blob-cursor .cursor-blob {
-    transform: scale(1.2);
-    background-color: var(--accent);
+/* 但在交互式元素上保持可见光标 */
+a,
+button,
+input,
+select,
+textarea {
+    cursor: pointer;
 }
 
-/* 在触摸设备上隐藏光标特效 */
+/* 在触摸设备上隐藏流体光标 */
 @media (hover: none) and (pointer: coarse) {
-    #blob-cursor {
+    #fluid {
         display: none !important;
+    }
+
+    body {
+        cursor: auto;
     }
 }
