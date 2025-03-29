@@ -1161,19 +1161,24 @@ function initEventListeners() {
     const item = e.target.closest(".bookmark-item");
     if (item) item.classList.remove("active");
   });
+  
+  // 移除对initSettingsEvents函数的调用
 }
 
-// 清除搜索的处理函数
-function handleClearSearch() {
-  const searchInput = document.getElementById("searchInput");
-  const clearButton = document.getElementById("clearSearch");
+// 初始化设置相关事件
+function initSettingsEvents() {
+  // 空函数，保留接口兼容性
+  return;
+}
 
-  searchInput.value = "";
-  searchInput.focus();
-  toggleClearButton(searchInput, clearButton);
-  updateBookmarkCount(allBookmarks.length);
-  searchResults?.classList.remove("visible");
-  renderBookmarks(allBookmarks);
+// 空函数，保留接口兼容性
+function loadSettings() {
+  return;
+}
+
+// 空函数，保留接口兼容性
+function saveSettings() {
+  return;
 }
 
 function showLoading(show = true) {
@@ -2625,3 +2630,16 @@ window.addEventListener("DOMContentLoaded", () => {
   // 初始化光标
   initFluidCursor();
 });
+
+// 清除搜索的处理函数
+function handleClearSearch() {
+  const searchInput = document.getElementById("searchInput");
+  const clearButton = document.getElementById("clearSearch");
+
+  searchInput.value = "";
+  searchInput.focus();
+  toggleClearButton(searchInput, clearButton);
+  updateBookmarkCount(allBookmarks.length);
+  searchResults?.classList.remove("visible");
+  renderBookmarks(allBookmarks);
+}

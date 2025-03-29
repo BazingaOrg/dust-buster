@@ -14,7 +14,8 @@
         "storage",
         "tabs",
         "scripting",
-        "webNavigation"
+        "webNavigation",
+        "downloads"
     ],
     "host_permissions": [
         "<all_urls>"
