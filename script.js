@@ -1,3 +1,44 @@
+// 检查是否已经有打开的标签页
+async function checkExistingTab() {
+    try {
+        const tabs = await chrome.tabs.query({});
+        const currentTab = await chrome.tabs.getCurrent();
+        
+        // 获取扩展的URL
+        const extensionUrl = chrome.runtime.getURL('index.html');
+        
+        // 查找已存在的灰不了标签页
+        const existingTab = tabs.find(tab => {
+            if (!tab.url || tab.id === currentTab.id || tab.active) {
+                return false;
+            }
+            return tab.url === extensionUrl;
+        });
+        
+        if (existingTab) {
+            // 如果找到已存在的标签页，激活它
+            await chrome.tabs.update(existingTab.id, { active: true });
+            // 关闭当前标签页
+            if (currentTab) {
+                await chrome.tabs.remove(currentTab.id);
+            }
+            return true;
+        }
+    } catch (error) {
+        console.error('Error checking existing tab:', error);
+    }
+    return false;
+}
+
+// 在页面加载时检查
+document.addEventListener('DOMContentLoaded', async () => {
+    const hasExistingTab = await checkExistingTab();
+    if (hasExistingTab) {
+        return; // 如果找到已存在的标签页，不继续初始化
+    }
+    init(); // 否则继续初始化
+});
+
 // 存储书签数据
 let allBookmarks = [];
 let selectedSearchResultIndex = -1;
