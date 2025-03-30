@@ -1203,7 +1203,8 @@ async function initializeBookmarks() {
     // 获取书签
     chrome.bookmarks.getTree(async (bookmarkTreeNodes) => {
       try {
-        allBookmarks = sortBookmarks(flattenBookmarks(bookmarkTreeNodes));
+        const flattenedBookmarks = flattenBookmarks(bookmarkTreeNodes);
+        allBookmarks = await sortBookmarksWithHistory(flattenedBookmarks);
         updateBookmarkCount(allBookmarks.length);
         renderBookmarks(allBookmarks);
       } catch (error) {
@@ -2657,4 +2658,64 @@ function handleClearSearch() {
 function toggleClearButton(searchInput, clearButton) {
   if (!searchInput || !clearButton) return;
   clearButton.style.display = searchInput.value.trim() ? "flex" : "none";
+}
+
+// 获取最近三天的历史记录
+async function getRecentHistory() {
+  const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+  const historyItems = await new Promise((resolve) => {
+    chrome.history.search({
+      text: '',
+      startTime: threeDaysAgo,
+      maxResults: 1000
+    }, resolve);
+  });
+
+  // 统计每个域名的访问次数
+  const domainVisitCount = {};
+  historyItems.forEach(item => {
+    try {
+      const url = new URL(item.url);
+      const domain = url.hostname;
+      domainVisitCount[domain] = (domainVisitCount[domain] || 0) + 1;
+    } catch (e) {
+      console.warn('Invalid URL:', item.url);
+    }
+  });
+
+  return domainVisitCount;
+}
+
+// 获取域名
+function getDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (e) {
+    return '';
+  }
+}
+
+// 新的排序函数
+async function sortBookmarksWithHistory(bookmarks) {
+  if (!Array.isArray(bookmarks)) return [];
+
+  // 获取最近三天的历史记录
+  const domainVisitCount = await getRecentHistory();
+
+  return bookmarks.sort((a, b) => {
+    // 首先按访问次数排序
+    const domainA = getDomain(a.url);
+    const domainB = getDomain(b.url);
+    const visitCountA = domainVisitCount[domainA] || 0;
+    const visitCountB = domainVisitCount[domainB] || 0;
+
+    if (visitCountA !== visitCountB) {
+      return visitCountB - visitCountA;
+    }
+
+    // 如果访问次数相同，按标题字母顺序排序
+    const titleA = (a.title || "").toLowerCase();
+    const titleB = (b.title || "").toLowerCase();
+    return titleA.localeCompare(titleB);
+  });
 }
