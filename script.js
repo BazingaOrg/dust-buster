@@ -1054,12 +1054,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderBookmarks(allBookmarks);
   });
 
-  // 切换清除按钮显示状态
-  function toggleClearButton(searchInput, clearButton) {
-    if (!searchInput || !clearButton) return;
-    clearButton.style.display = searchInput.value.trim() ? "flex" : "none";
-  }
-
   // 初始化时隐藏清除按钮
   toggleClearButton(searchInput, clearButton);
 
@@ -2657,4 +2651,10 @@ function handleClearSearch() {
   updateBookmarkCount(allBookmarks.length);
   searchResults?.classList.remove("visible");
   renderBookmarks(allBookmarks);
+}
+
+// 切换清除按钮显示状态
+function toggleClearButton(searchInput, clearButton) {
+  if (!searchInput || !clearButton) return;
+  clearButton.style.display = searchInput.value.trim() ? "flex" : "none";
 }
