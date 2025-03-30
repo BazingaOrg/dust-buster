@@ -34,12 +34,24 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 async function handleExtensionTab(tab) {
     const existingTabId = windowExtensionTabs.get(tab.windowId);
 
+    // 如果标签页已经导航到其他网站，从windowExtensionTabs中移除它
+    if (tab.url !== EXTENSION_URL && tab.url !== 'chrome://newtab/') {
+        windowExtensionTabs.delete(tab.windowId);
+        return;
+    }
+
     if (existingTabId) {
         try {
             const existingTab = await chrome.tabs.get(existingTabId);
             if (existingTab) {
-                await chrome.tabs.update(existingTabId, { active: true });
-                await chrome.tabs.remove(tab.id);
+                // 检查现有标签页是否还是扩展页面
+                if (existingTab.url !== EXTENSION_URL && existingTab.url !== 'chrome://newtab/') {
+                    windowExtensionTabs.delete(tab.windowId);
+                    windowExtensionTabs.set(tab.windowId, tab.id);
+                } else {
+                    await chrome.tabs.update(existingTabId, { active: true });
+                    await chrome.tabs.remove(tab.id);
+                }
             } else {
                 windowExtensionTabs.set(tab.windowId, tab.id);
             }
