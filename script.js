@@ -1290,32 +1290,26 @@ function showToast(message, duration = 3000) {
 
 // Fluid Cursor
 function initFluidCursor() {
+  const canvas = document.getElementById('fluid');
+  resizeCanvas();
+  
   // @ts-nocheck
-  const canvas = document.getElementById("fluid");
   if (!canvas) {
     console.warn("Fluid canvas element not found");
     return;
   }
 
-  // 调整canvas大小
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-
-  resizeCanvas();
-
-  // 流体配置参数
   let config = {
     SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1024,
-    DENSITY_DISSIPATION: 1.8, // 进一步减小消散速度，让效果停留更久
-    VELOCITY_DISSIPATION: 1.2, // 进一步减小速度消散
+    DYE_RESOLUTION: 1440,
+    CAPTURE_RESOLUTION: 512,
+    DENSITY_DISSIPATION: 4.0,
+    VELOCITY_DISSIPATION: 2.0,
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
     CURL: 30,
-    SPLAT_RADIUS: 0.15, // 减小喷溅半径，原先太大了
-    SPLAT_FORCE: 1200, // 保持喷溅力度
+    SPLAT_RADIUS: 0.25,
+    SPLAT_FORCE: 8000,
     SHADING: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
@@ -1323,7 +1317,6 @@ function initFluidCursor() {
     TRANSPARENT: true,
   };
 
-  // 指针原型
   function pointerPrototype() {
     this.id = -1;
     this.texcoordX = 0;
@@ -2379,14 +2372,48 @@ function initFluidCursor() {
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
   }
 
+  // 生成随机颜色
+  function generateColor() {
+    // 检查当前主题模式
+    const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    // 使用主题色 #f59e0b 的 HSL 值作为基准
+    // HSL: 35, 92%, 50%
+    const baseHue = 35;
+    const hueVariation = 15; // 允许色相在基准色周围15度范围内变化
+    const hue = (baseHue + (Math.random() - 0.5) * hueVariation) / 360;
+    
+    let c = HSVtoRGB(hue, 0.8, 1.0);
+    
+    // 根据主题模式调整颜色强度
+    if (isDarkMode) {
+      // 暗色模式下使用较亮的颜色
+      c.r *= 0.25;
+      c.g *= 0.25;
+      c.b *= 0.25;
+    } else {
+      // 亮色模式下使用更深的颜色
+      c.r *= 0.95;  // 增加红色分量
+      c.g *= 0.95;  // 增加绿色分量
+      c.b *= 0.95;  // 增加蓝色分量
+    }
+    
+    return c;
+  }
+
   // 点击喷溅
   function clickSplat(pointer) {
     const color = generateColor();
-    color.r *= 15.0; // 增加点击时的颜色强度，从10.0改为15.0
-    color.g *= 15.0; // 增加点击时的颜色强度，从10.0改为15.0
-    color.b *= 15.0; // 增加点击时的颜色强度，从10.0改为15.0
-    let dx = 1200 * (Math.random() - 0.5); // 增加随机移动范围
-    let dy = 1200 * (Math.random() - 0.5); // 增加随机移动范围
+    const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    // 根据主题模式调整点击时的颜色强度
+    const intensity = isDarkMode ? 20.0 : 35.0;  // 保持原有的点击强度
+    color.r *= intensity;
+    color.g *= intensity;
+    color.b *= intensity;
+    
+    let dx = 15 * (Math.random() - 0.5);
+    let dy = 40 * (Math.random() - 0.5);
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
   }
 
@@ -2406,7 +2433,6 @@ function initFluidCursor() {
     );
     blit(velocity.write);
     velocity.swap();
-
     gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
     gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
     blit(dye.write);
@@ -2434,15 +2460,6 @@ function initFluidCursor() {
     return delta;
   }
 
-  // 生成随机颜色
-  function generateColor() {
-    let c = HSVtoRGB(Math.random(), 1.0, 1.0);
-    c.r *= 0.3; // 增加颜色强度，从0.15改为0.3
-    c.g *= 0.3; // 增加颜色强度，从0.15改为0.3
-    c.b *= 0.3; // 增加颜色强度，从0.15改为0.3
-    return c;
-  }
-
   // HSV到RGB转换
   function HSVtoRGB(h, s, v) {
     let r, g, b, i, f, p, q, t;
@@ -2451,7 +2468,6 @@ function initFluidCursor() {
     p = v * (1 - s);
     q = v * (1 - f * s);
     t = v * (1 - (1 - f) * s);
-
     switch (i % 6) {
       case 0:
         (r = v), (g = t), (b = p);
@@ -2472,7 +2488,6 @@ function initFluidCursor() {
         (r = v), (g = p), (b = q);
         break;
     }
-
     return {
       r,
       g,
