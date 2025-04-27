@@ -1,42 +1,42 @@
 // 检查是否已经有打开的标签页
 async function checkExistingTab() {
-    try {
-        const tabs = await chrome.tabs.query({});
-        const currentTab = await chrome.tabs.getCurrent();
-        
-        // 获取扩展的URL
-        const extensionUrl = chrome.runtime.getURL('index.html');
-        
-        // 查找已存在的灰不了标签页
-        const existingTab = tabs.find(tab => {
-            if (!tab.url || tab.id === currentTab.id || tab.active) {
-                return false;
-            }
-            return tab.url === extensionUrl;
-        });
-        
-        if (existingTab) {
-            // 如果找到已存在的标签页，激活它
-            await chrome.tabs.update(existingTab.id, { active: true });
-            // 关闭当前标签页
-            if (currentTab) {
-                await chrome.tabs.remove(currentTab.id);
-            }
-            return true;
-        }
-    } catch (error) {
-        console.error('Error checking existing tab:', error);
+  try {
+    const tabs = await chrome.tabs.query({});
+    const currentTab = await chrome.tabs.getCurrent();
+
+    // 获取扩展的URL
+    const extensionUrl = chrome.runtime.getURL('index.html');
+
+    // 查找已存在的灰不了标签页
+    const existingTab = tabs.find(tab => {
+      if (!tab.url || tab.id === currentTab.id || tab.active) {
+        return false;
+      }
+      return tab.url === extensionUrl;
+    });
+
+    if (existingTab) {
+      // 如果找到已存在的标签页，激活它
+      await chrome.tabs.update(existingTab.id, { active: true });
+      // 关闭当前标签页
+      if (currentTab) {
+        await chrome.tabs.remove(currentTab.id);
+      }
+      return true;
     }
-    return false;
+  } catch (error) {
+    console.error('Error checking existing tab:', error);
+  }
+  return false;
 }
 
 // 在页面加载时检查
 document.addEventListener('DOMContentLoaded', async () => {
-    const hasExistingTab = await checkExistingTab();
-    if (hasExistingTab) {
-        return; // 如果找到已存在的标签页，不继续初始化
-    }
-    init(); // 否则继续初始化
+  const hasExistingTab = await checkExistingTab();
+  if (hasExistingTab) {
+    return; // 如果找到已存在的标签页，不继续初始化
+  }
+  init(); // 否则继续初始化
 });
 
 // 存储书签数据
@@ -301,10 +301,10 @@ function filterBookmarks(query, updateUI = true) {
 
   const filtered = query
     ? allBookmarks.filter(
-        (bookmark) =>
-          bookmark.title.toLowerCase().includes(query) ||
-          bookmark.url.toLowerCase().includes(query)
-      )
+      (bookmark) =>
+        bookmark.title.toLowerCase().includes(query) ||
+        bookmark.url.toLowerCase().includes(query)
+    )
     : allBookmarks;
 
   if (updateUI) {
@@ -675,9 +675,8 @@ function renderBookmarks(bookmarksToShow) {
                 <div class="bookmark-url">${url}</div>
               </div>
             </div>
-            ${
-              previewUrl
-                ? `
+            ${previewUrl
+            ? `
             <div class="bookmark-preview">
               <div class="preview-skeleton"></div>
               <img class="preview-image" 
@@ -686,8 +685,8 @@ function renderBookmarks(bookmarksToShow) {
                    data-url="${url}"
                    loading="lazy" />
             </div>`
-                : `<div class="bookmark-preview no-preview"></div>`
-            }
+            : `<div class="bookmark-preview no-preview"></div>`
+          }
           </div>
         `;
       })
@@ -806,9 +805,8 @@ function showSearchResults(query) {
             <div class="url">${escapeHtml(bookmark.url)}</div>
           </div>
         </div>
-        ${
-          previewUrl
-            ? `
+        ${previewUrl
+          ? `
         <div class="search-result-preview">
           <div class="preview-skeleton"></div>
           <img src="${previewUrl}" 
@@ -817,7 +815,7 @@ function showSearchResults(query) {
                data-url="${bookmark.url}"
                loading="lazy" />
         </div>`
-            : ``
+          : ``
         }
       `;
 
@@ -1155,7 +1153,7 @@ function initEventListeners() {
     const item = e.target.closest(".bookmark-item");
     if (item) item.classList.remove("active");
   });
-  
+
   // 移除对initSettingsEvents函数的调用
 }
 
@@ -1287,31 +1285,23 @@ function showToast(message, duration = 3000) {
 function initFluidCursor() {
   const canvas = document.getElementById('fluid');
   resizeCanvas();
-  
-  // @ts-nocheck
-  if (!canvas) {
-    console.warn("Fluid canvas element not found");
-    return;
-  }
-
   let config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 1440,
     CAPTURE_RESOLUTION: 512,
-    DENSITY_DISSIPATION: 4.0,
-    VELOCITY_DISSIPATION: 2.0,
-    PRESSURE: 0.8,
+    DENSITY_DISSIPATION: 3.5,
+    VELOCITY_DISSIPATION: 2,
+    PRESSURE: 0.1,
     PRESSURE_ITERATIONS: 20,
-    CURL: 30,
-    SPLAT_RADIUS: 0.25,
-    SPLAT_FORCE: 8000,
+    CURL: 3,
+    SPLAT_RADIUS: 0.2,
+    SPLAT_FORCE: 6000,
     SHADING: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
-    BACK_COLOR: { r: 0, g: 0, b: 0 },
+    BACK_COLOR: { r: 0.5, g: 0, b: 0 },
     TRANSPARENT: true,
   };
-
   function pointerPrototype() {
     this.id = -1;
     this.texcoordX = 0;
@@ -1324,11 +1314,13 @@ function initFluidCursor() {
     this.moved = false;
     this.color = [0, 0, 0];
   }
-
   const pointers = [];
   pointers.push(new pointerPrototype());
-
-  // 获取WebGL上下文
+  const { gl, ext } = getWebGLContext(canvas);
+  if (!ext.supportLinearFiltering) {
+    config.DYE_RESOLUTION = 256;
+    config.SHADING = false;
+  }
   function getWebGLContext(canvas) {
     const params = {
       alpha: true,
@@ -1337,33 +1329,28 @@ function initFluidCursor() {
       antialias: false,
       preserveDrawingBuffer: false,
     };
-
-    let gl = canvas.getContext("webgl2", params);
+    let gl = canvas.getContext('webgl2', params);
     const isWebGL2 = !!gl;
     if (!isWebGL2)
       gl =
-        canvas.getContext("webgl", params) ||
-        canvas.getContext("experimental-webgl", params);
-
+        canvas.getContext('webgl', params) ||
+        canvas.getContext('experimental-webgl', params);
     let halfFloat;
     let supportLinearFiltering;
     if (isWebGL2) {
-      gl.getExtension("EXT_color_buffer_float");
-      supportLinearFiltering = gl.getExtension("OES_texture_float_linear");
+      gl.getExtension('EXT_color_buffer_float');
+      supportLinearFiltering = gl.getExtension('OES_texture_float_linear');
     } else {
-      halfFloat = gl.getExtension("OES_texture_half_float");
-      supportLinearFiltering = gl.getExtension("OES_texture_half_float_linear");
+      halfFloat = gl.getExtension('OES_texture_half_float');
+      supportLinearFiltering = gl.getExtension('OES_texture_half_float_linear');
     }
-
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
     const halfFloatTexType = isWebGL2
       ? gl.HALF_FLOAT
       : halfFloat.HALF_FLOAT_OES;
     let formatRGBA;
     let formatRG;
     let formatR;
-
     if (isWebGL2) {
       formatRGBA = getSupportedFormat(
         gl,
@@ -1378,7 +1365,6 @@ function initFluidCursor() {
       formatRG = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
       formatR = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
     }
-
     return {
       gl,
       ext: {
@@ -1390,7 +1376,6 @@ function initFluidCursor() {
       },
     };
   }
-
   function getSupportedFormat(gl, internalFormat, format, type) {
     if (!supportRenderTextureFormat(gl, internalFormat, format, type)) {
       switch (internalFormat) {
@@ -1402,13 +1387,11 @@ function initFluidCursor() {
           return null;
       }
     }
-
     return {
       internalFormat,
       format,
     };
   }
-
   function supportRenderTextureFormat(gl, internalFormat, format, type) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -1427,7 +1410,6 @@ function initFluidCursor() {
       type,
       null
     );
-
     const fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(
@@ -1437,11 +1419,9 @@ function initFluidCursor() {
       texture,
       0
     );
-
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     return status == gl.FRAMEBUFFER_COMPLETE;
   }
-
   class Material {
     constructor(vertexShader, fragmentShaderSource) {
       this.vertexShader = vertexShader;
@@ -1450,11 +1430,9 @@ function initFluidCursor() {
       this.activeProgram = null;
       this.uniforms = [];
     }
-
     setKeywords(keywords) {
       let hash = 0;
       for (let i = 0; i < keywords.length; i++) hash += hashCode(keywords[i]);
-
       let program = this.programs[hash];
       if (program == null) {
         let fragmentShader = compileShader(
@@ -1465,42 +1443,33 @@ function initFluidCursor() {
         program = createProgram(this.vertexShader, fragmentShader);
         this.programs[hash] = program;
       }
-
       if (program == this.activeProgram) return;
-
       this.uniforms = getUniforms(program);
       this.activeProgram = program;
     }
-
     bind() {
       gl.useProgram(this.activeProgram);
     }
   }
-
   class Program {
     constructor(vertexShader, fragmentShader) {
       this.uniforms = {};
       this.program = createProgram(vertexShader, fragmentShader);
       this.uniforms = getUniforms(this.program);
     }
-
     bind() {
       gl.useProgram(this.program);
     }
   }
-
   function createProgram(vertexShader, fragmentShader) {
     let program = gl.createProgram();
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
-
     if (!gl.getProgramParameter(program, gl.LINK_STATUS))
       console.trace(gl.getProgramInfoLog(program));
-
     return program;
   }
-
   function getUniforms(program) {
     let uniforms = [];
     let uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
@@ -1510,39 +1479,23 @@ function initFluidCursor() {
     }
     return uniforms;
   }
-
   function compileShader(type, source, keywords) {
     source = addKeywords(source, keywords);
-
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
       console.trace(gl.getShaderInfoLog(shader));
-
     return shader;
   }
-
   function addKeywords(source, keywords) {
     if (keywords == null) return source;
-    let keywordsString = "";
+    let keywordsString = '';
     keywords.forEach((keyword) => {
-      keywordsString += "#define " + keyword + "\n";
+      keywordsString += '#define ' + keyword + '\n';
     });
-
     return keywordsString + source;
   }
-
-  // 获取WebGL上下文
-  const { gl, ext } = getWebGLContext(canvas);
-
-  if (!ext.supportLinearFiltering) {
-    config.DYE_RESOLUTION = 512;
-    config.SHADING = false;
-  }
-
-  // 顶点着色器
   const baseVertexShader = compileShader(
     gl.VERTEX_SHADER,
     `
@@ -1566,8 +1519,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 模糊顶点着色器
   const blurVertexShader = compileShader(
     gl.VERTEX_SHADER,
     `
@@ -1588,8 +1539,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 模糊片段着色器
   const blurShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1609,8 +1558,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 复制片段着色器
   const copyShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1625,8 +1572,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 清除片段着色器
   const clearShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1642,8 +1587,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 颜色片段着色器
   const colorShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1656,8 +1599,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 显示片段着色器源代码
   const displayShaderSource = `
        precision highp float;
        precision highp sampler2D;
@@ -1700,8 +1641,6 @@ function initFluidCursor() {
            gl_FragColor = vec4(c, a);
        }
    `;
-
-  // Splat片段着色器
   const splatShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1724,8 +1663,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 对流片段着色器
   const advectionShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1767,8 +1704,6 @@ function initFluidCursor() {
        }`,
     ext.supportLinearFiltering ? null : ["MANUAL_FILTERING"]
   );
-
-  // 散度片段着色器
   const divergenceShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1799,8 +1734,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // curl片段着色器
   const curlShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1824,8 +1757,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 涡度片段着色器
   const vorticityShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1861,8 +1792,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 压力片段着色器
   const pressureShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1889,8 +1818,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // 梯度减法片段着色器
   const gradientSubtractShader = compileShader(
     gl.FRAGMENT_SHADER,
     `
@@ -1916,8 +1843,6 @@ function initFluidCursor() {
        }
    `
   );
-
-  // blit函数
   const blit = (() => {
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(
@@ -1933,7 +1858,6 @@ function initFluidCursor() {
     );
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
-
     return (target, clear = false) => {
       if (target == null) {
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -1949,15 +1873,11 @@ function initFluidCursor() {
       gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     };
   })();
-
-  // 创建帧缓冲对象
   let dye;
   let velocity;
   let divergence;
   let curl;
   let pressure;
-
-  // 创建程序
   const copyProgram = new Program(baseVertexShader, copyShader);
   const clearProgram = new Program(baseVertexShader, clearShader);
   const splatProgram = new Program(baseVertexShader, splatShader);
@@ -1970,22 +1890,16 @@ function initFluidCursor() {
     baseVertexShader,
     gradientSubtractShader
   );
-
   const displayMaterial = new Material(baseVertexShader, displayShaderSource);
-
-  // 初始化帧缓冲
   function initFramebuffers() {
     let simRes = getResolution(config.SIM_RESOLUTION);
     let dyeRes = getResolution(config.DYE_RESOLUTION);
-
     const texType = ext.halfFloatTexType;
     const rgba = ext.formatRGBA;
     const rg = ext.formatRG;
     const r = ext.formatR;
     const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
-
     gl.disable(gl.BLEND);
-
     if (dye == null)
       dye = createDoubleFBO(
         dyeRes.width,
@@ -2005,7 +1919,6 @@ function initFluidCursor() {
         texType,
         filtering
       );
-
     if (velocity == null)
       velocity = createDoubleFBO(
         simRes.width,
@@ -2025,7 +1938,6 @@ function initFluidCursor() {
         texType,
         filtering
       );
-
     divergence = createFBO(
       simRes.width,
       simRes.height,
@@ -2051,8 +1963,6 @@ function initFluidCursor() {
       gl.NEAREST
     );
   }
-
-  // 创建FBO
   function createFBO(w, h, internalFormat, format, type, param) {
     gl.activeTexture(gl.TEXTURE0);
     let texture = gl.createTexture();
@@ -2072,7 +1982,6 @@ function initFluidCursor() {
       type,
       null
     );
-
     let fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(
@@ -2084,10 +1993,8 @@ function initFluidCursor() {
     );
     gl.viewport(0, 0, w, h);
     gl.clear(gl.COLOR_BUFFER_BIT);
-
     let texelSizeX = 1.0 / w;
     let texelSizeY = 1.0 / h;
-
     return {
       texture,
       fbo,
@@ -2102,12 +2009,9 @@ function initFluidCursor() {
       },
     };
   }
-
-  // 创建双缓冲FBO
   function createDoubleFBO(w, h, internalFormat, format, type, param) {
     let fbo1 = createFBO(w, h, internalFormat, format, type, param);
     let fbo2 = createFBO(w, h, internalFormat, format, type, param);
-
     return {
       width: w,
       height: h,
@@ -2132,8 +2036,6 @@ function initFluidCursor() {
       },
     };
   }
-
-  // 重置FBO
   function resizeFBO(target, w, h, internalFormat, format, type, param) {
     let newFBO = createFBO(w, h, internalFormat, format, type, param);
     copyProgram.bind();
@@ -2141,8 +2043,6 @@ function initFluidCursor() {
     blit(newFBO);
     return newFBO;
   }
-
-  // 重置双缓冲FBO
   function resizeDoubleFBO(target, w, h, internalFormat, format, type, param) {
     if (target.width == w && target.height == h) return target;
     target.read = resizeFBO(
@@ -2161,20 +2061,53 @@ function initFluidCursor() {
     target.texelSizeY = 1.0 / h;
     return target;
   }
-
+  function createTextureAsync(url) {
+    let texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGB,
+      1,
+      1,
+      0,
+      gl.RGB,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([255, 255, 255])
+    );
+    let obj = {
+      texture,
+      width: 1,
+      height: 1,
+      attach(id) {
+        gl.activeTexture(gl.TEXTURE0 + id);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        return id;
+      },
+    };
+    let image = new Image();
+    image.onload = () => {
+      obj.width = image.width;
+      obj.height = image.height;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    };
+    image.src = url;
+    return obj;
+  }
   function updateKeywords() {
     let displayKeywords = [];
-    if (config.SHADING) displayKeywords.push("SHADING");
+    if (config.SHADING) displayKeywords.push('SHADING');
     displayMaterial.setKeywords(displayKeywords);
   }
-
   updateKeywords();
   initFramebuffers();
-
   let lastUpdateTime = Date.now();
   let colorUpdateTimer = 0.0;
-
-  // 动画更新函数
   function update() {
     const dt = calcDeltaTime();
     if (resizeCanvas()) initFramebuffers();
@@ -2184,8 +2117,6 @@ function initFluidCursor() {
     render(null);
     requestAnimationFrame(update);
   }
-
-  // 计算时间增量
   function calcDeltaTime() {
     let now = Date.now();
     let dt = (now - lastUpdateTime) / 1000;
@@ -2193,8 +2124,6 @@ function initFluidCursor() {
     lastUpdateTime = now;
     return dt;
   }
-
-  // 调整Canvas大小
   function resizeCanvas() {
     let width = scaleByPixelRatio(canvas.clientWidth);
     let height = scaleByPixelRatio(canvas.clientHeight);
@@ -2205,8 +2134,6 @@ function initFluidCursor() {
     }
     return false;
   }
-
-  // 更新颜色
   function updateColors(dt) {
     colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
     if (colorUpdateTimer >= 1) {
@@ -2216,8 +2143,6 @@ function initFluidCursor() {
       });
     }
   }
-
-  // 应用输入
   function applyInputs() {
     pointers.forEach((p) => {
       if (p.moved) {
@@ -2226,11 +2151,8 @@ function initFluidCursor() {
       }
     });
   }
-
-  // 流体模拟步骤
   function step(dt) {
     gl.disable(gl.BLEND);
-
     curlProgram.bind();
     gl.uniform2f(
       curlProgram.uniforms.texelSize,
@@ -2239,7 +2161,6 @@ function initFluidCursor() {
     );
     gl.uniform1i(curlProgram.uniforms.uVelocity, velocity.read.attach(0));
     blit(curl);
-
     vorticityProgram.bind();
     gl.uniform2f(
       vorticityProgram.uniforms.texelSize,
@@ -2252,7 +2173,6 @@ function initFluidCursor() {
     gl.uniform1f(vorticityProgram.uniforms.dt, dt);
     blit(velocity.write);
     velocity.swap();
-
     divergenceProgram.bind();
     gl.uniform2f(
       divergenceProgram.uniforms.texelSize,
@@ -2261,13 +2181,11 @@ function initFluidCursor() {
     );
     gl.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read.attach(0));
     blit(divergence);
-
     clearProgram.bind();
     gl.uniform1i(clearProgram.uniforms.uTexture, pressure.read.attach(0));
     gl.uniform1f(clearProgram.uniforms.value, config.PRESSURE);
     blit(pressure.write);
     pressure.swap();
-
     pressureProgram.bind();
     gl.uniform2f(
       pressureProgram.uniforms.texelSize,
@@ -2280,7 +2198,6 @@ function initFluidCursor() {
       blit(pressure.write);
       pressure.swap();
     }
-
     gradienSubtractProgram.bind();
     gl.uniform2f(
       gradienSubtractProgram.uniforms.texelSize,
@@ -2297,7 +2214,6 @@ function initFluidCursor() {
     );
     blit(velocity.write);
     velocity.swap();
-
     advectionProgram.bind();
     gl.uniform2f(
       advectionProgram.uniforms.texelSize,
@@ -2320,7 +2236,6 @@ function initFluidCursor() {
     );
     blit(velocity.write);
     velocity.swap();
-
     if (!ext.supportLinearFiltering)
       gl.uniform2f(
         advectionProgram.uniforms.dyeTexelSize,
@@ -2336,19 +2251,14 @@ function initFluidCursor() {
     blit(dye.write);
     dye.swap();
   }
-
-  // 渲染到目标
   function render(target) {
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.BLEND);
     drawDisplay(target);
   }
-
-  // 绘制显示
   function drawDisplay(target) {
     let width = target == null ? gl.drawingBufferWidth : target.width;
     let height = target == null ? gl.drawingBufferHeight : target.height;
-
     displayMaterial.bind();
     if (config.SHADING)
       gl.uniform2f(
@@ -2359,60 +2269,20 @@ function initFluidCursor() {
     gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
     blit(target);
   }
-
-  // 喷溅指针
   function splatPointer(pointer) {
     let dx = pointer.deltaX * config.SPLAT_FORCE;
     let dy = pointer.deltaY * config.SPLAT_FORCE;
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
   }
-
-  // 生成随机颜色
-  function generateColor() {
-    // 检查当前主题模式
-    const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
-    
-    // 使用主题色 #f59e0b 的 HSL 值作为基准
-    // HSL: 35, 92%, 50%
-    const baseHue = 35;
-    const hueVariation = 15; // 允许色相在基准色周围15度范围内变化
-    const hue = (baseHue + (Math.random() - 0.5) * hueVariation) / 360;
-    
-    let c = HSVtoRGB(hue, 0.8, 1.0);
-    
-    // 根据主题模式调整颜色强度
-    if (isDarkMode) {
-      // 暗色模式下使用较亮的颜色
-      c.r *= 0.25;
-      c.g *= 0.25;
-      c.b *= 0.25;
-    } else {
-      // 亮色模式下使用更深的颜色
-      c.r *= 0.95;  // 增加红色分量
-      c.g *= 0.95;  // 增加绿色分量
-      c.b *= 0.95;  // 增加蓝色分量
-    }
-    
-    return c;
-  }
-
-  // 点击喷溅
   function clickSplat(pointer) {
     const color = generateColor();
-    const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
-    
-    // 根据主题模式调整点击时的颜色强度
-    const intensity = isDarkMode ? 20.0 : 35.0;  // 保持原有的点击强度
-    color.r *= intensity;
-    color.g *= intensity;
-    color.b *= intensity;
-    
-    let dx = 15 * (Math.random() - 0.5);
-    let dy = 40 * (Math.random() - 0.5);
+    color.r *= 10.0;
+    color.g *= 10.0;
+    color.b *= 10.0;
+    let dx = 10 * (Math.random() - 0.5);
+    let dy = 30 * (Math.random() - 0.5);
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
   }
-
-  // 喷溅
   function splat(x, y, dx, dy, color) {
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
@@ -2433,29 +2303,177 @@ function initFluidCursor() {
     blit(dye.write);
     dye.swap();
   }
-
-  // 修正半径
   function correctRadius(radius) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1) radius *= aspectRatio;
     return radius;
   }
-
-  // 修正X方向增量
+  window.addEventListener('mousedown', (e) => {
+    let pointer = pointers[0];
+    let posX = scaleByPixelRatio(e.clientX);
+    let posY = scaleByPixelRatio(e.clientY);
+    updatePointerDownData(pointer, -1, posX, posY);
+    clickSplat(pointer);
+  });
+  document.body.addEventListener('mousemove', function handleFirstMouseMove(e) {
+    let pointer = pointers[0];
+    let posX = scaleByPixelRatio(e.clientX);
+    let posY = scaleByPixelRatio(e.clientY);
+    let color = generateColor();
+    update();
+    updatePointerMoveData(pointer, posX, posY, color);
+    document.body.removeEventListener('mousemove', handleFirstMouseMove);
+  });
+  window.addEventListener('mousemove', (e) => {
+    let pointer = pointers[0];
+    let posX = scaleByPixelRatio(e.clientX);
+    let posY = scaleByPixelRatio(e.clientY);
+    let color = pointer.color;
+    updatePointerMoveData(pointer, posX, posY, color);
+  });
+  document.body.addEventListener(
+    'touchstart',
+    function handleFirstTouchStart(e) {
+      const touches = e.targetTouches;
+      let pointer = pointers[0];
+      for (let i = 0; i < touches.length; i++) {
+        let posX = scaleByPixelRatio(touches[i].clientX);
+        let posY = scaleByPixelRatio(touches[i].clientY);
+        update();
+        updatePointerDownData(pointer, touches[i].identifier, posX, posY);
+      }
+      document.body.removeEventListener('touchstart', handleFirstTouchStart);
+    }
+  );
+  window.addEventListener('touchstart', (e) => {
+    const touches = e.targetTouches;
+    let pointer = pointers[0];
+    for (let i = 0; i < touches.length; i++) {
+      let posX = scaleByPixelRatio(touches[i].clientX);
+      let posY = scaleByPixelRatio(touches[i].clientY);
+      updatePointerDownData(pointer, touches[i].identifier, posX, posY);
+    }
+  });
+  window.addEventListener(
+    'touchmove',
+    (e) => {
+      const touches = e.targetTouches;
+      let pointer = pointers[0];
+      for (let i = 0; i < touches.length; i++) {
+        let posX = scaleByPixelRatio(touches[i].clientX);
+        let posY = scaleByPixelRatio(touches[i].clientY);
+        updatePointerMoveData(pointer, posX, posY, pointer.color);
+      }
+    },
+    false
+  );
+  window.addEventListener('touchend', (e) => {
+    const touches = e.changedTouches;
+    let pointer = pointers[0];
+    for (let i = 0; i < touches.length; i++) {
+      updatePointerUpData(pointer);
+    }
+  });
+  function updatePointerDownData(pointer, id, posX, posY) {
+    pointer.id = id;
+    pointer.down = true;
+    pointer.moved = false;
+    pointer.texcoordX = posX / canvas.width;
+    pointer.texcoordY = 1.0 - posY / canvas.height;
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.deltaX = 0;
+    pointer.deltaY = 0;
+    pointer.color = generateColor();
+  }
+  function updatePointerMoveData(pointer, posX, posY, color) {
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.texcoordX = posX / canvas.width;
+    pointer.texcoordY = 1.0 - posY / canvas.height;
+    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
+    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
+    pointer.moved =
+      Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+    pointer.color = color;
+  }
+  function updatePointerUpData(pointer) {
+    pointer.down = false;
+  }
   function correctDeltaX(delta) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio < 1) delta *= aspectRatio;
     return delta;
   }
-
-  // 修正Y方向增量
   function correctDeltaY(delta) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1) delta /= aspectRatio;
     return delta;
   }
 
-  // HSV到RGB转换
+  // Helper function to parse CSS color string (hex, rgb) to RGB [0, 1]
+  function parseCssColor(colorString) {
+    if (!colorString) return { r: 1, g: 1, b: 1 }; // Default to white if parsing fails
+
+    colorString = colorString.trim();
+
+    // Hex color
+    if (colorString.startsWith('#')) {
+      let hex = colorString.slice(1);
+      if (hex.length === 3) {
+        hex = hex.split('').map(char => char + char).join('');
+      }
+      if (hex.length === 6) {
+        const bigint = parseInt(hex, 16);
+        return {
+          r: ((bigint >> 16) & 255) / 255,
+          g: ((bigint >> 8) & 255) / 255,
+          b: (bigint & 255) / 255,
+        };
+      }
+    }
+
+    // RGB color (e.g., "rgb(255, 0, 0)")
+    if (colorString.startsWith('rgb(')) {
+      const parts = colorString.substring(4, colorString.length - 1).split(',').map(Number);
+      if (parts.length === 3 && parts.every(p => !isNaN(p) && p >= 0 && p <= 255)) {
+        return {
+          r: parts[0] / 255,
+          g: parts[1] / 255,
+          b: parts[2] / 255,
+        };
+      }
+    }
+
+    // Basic color names (add more if needed)
+    const basicColors = {
+      'white': { r: 1, g: 1, b: 1 },
+      'black': { r: 0, g: 0, b: 0 },
+      'red': { r: 1, g: 0, b: 0 },
+      'green': { r: 0, g: 1, b: 0 },
+      'blue': { r: 0, g: 0, b: 1 },
+    };
+    if (basicColors[colorString.toLowerCase()]) {
+      return basicColors[colorString.toLowerCase()];
+    }
+
+
+    console.warn(`Could not parse color string: ${colorString}. Defaulting to white.`);
+    return { r: 1, g: 1, b: 1 }; // Default
+  }
+
+
+  function generateColor() {
+    // Get the --accent color from CSS variables
+    const accentColorString = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    let c = parseCssColor(accentColorString || '#f59e0b'); // Fallback to orange if --accent is not defined
+
+    // Apply the original scaling
+    c.r *= 0.15;
+    c.g *= 0.15;
+    c.b *= 0.15;
+    return c;
+  }
   function HSVtoRGB(h, s, v) {
     let r, g, b, i, f, p, q, t;
     i = Math.floor(h * 6);
@@ -2489,154 +2507,46 @@ function initFluidCursor() {
       b,
     };
   }
-
-  // 包裹值在范围内
   function wrap(value, min, max) {
     const range = max - min;
     if (range == 0) return min;
     return ((value - min) % range) + min;
   }
-
-  // 获取分辨率
   function getResolution(resolution) {
     let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
     if (aspectRatio < 1) aspectRatio = 1.0 / aspectRatio;
-
     const min = Math.round(resolution);
     const max = Math.round(resolution * aspectRatio);
-
     if (gl.drawingBufferWidth > gl.drawingBufferHeight)
       return { width: max, height: min };
     else return { width: min, height: max };
   }
-
-  // 根据像素比例缩放
   function scaleByPixelRatio(input) {
     const pixelRatio = window.devicePixelRatio || 1;
     return Math.floor(input * pixelRatio);
   }
-
-  // 哈希码计算
   function hashCode(s) {
     if (s.length == 0) return 0;
     let hash = 0;
     for (let i = 0; i < s.length; i++) {
       hash = (hash << 5) - hash + s.charCodeAt(i);
-      hash |= 0; // 转为32位整数
+      hash |= 0;
     }
     return hash;
   }
-
-  // 更新指针下移数据
-  function updatePointerDownData(pointer, id, posX, posY) {
-    pointer.id = id;
-    pointer.down = true;
-    pointer.moved = false;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.deltaX = 0;
-    pointer.deltaY = 0;
-    pointer.color = generateColor();
-  }
-
-  // 更新指针移动数据
-  function updatePointerMoveData(pointer, posX, posY, color) {
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
-    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
-    pointer.moved =
-      Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
-    pointer.color = color;
-  }
-
-  // 更新指针抬起数据
-  function updatePointerUpData(pointer) {
-    pointer.down = false;
-  }
-
-  // 事件监听
-  window.addEventListener("mousedown", (e) => {
-    let pointer = pointers[0];
-    let posX = scaleByPixelRatio(e.clientX);
-    let posY = scaleByPixelRatio(e.clientY);
-    updatePointerDownData(pointer, -1, posX, posY);
-    clickSplat(pointer);
-  });
-
-  window.addEventListener("mousemove", (e) => {
-    let pointer = pointers[0];
-    let posX = scaleByPixelRatio(e.clientX);
-    let posY = scaleByPixelRatio(e.clientY);
-    let color = generateColor();
-    updatePointerMoveData(pointer, posX, posY, color);
-  });
-
-  window.addEventListener(
-    "touchstart",
-    (e) => {
-      const touches = e.targetTouches;
-      for (let i = 0; i < touches.length; i++) {
-        let posX = scaleByPixelRatio(touches[i].clientX);
-        let posY = scaleByPixelRatio(touches[i].clientY);
-
-        // 确保有足够的指针
-        while (touches[i].identifier >= pointers.length) {
-          pointers.push(new pointerPrototype());
-        }
-
-        updatePointerDownData(
-          pointers[touches[i].identifier],
-          touches[i].identifier,
-          posX,
-          posY
-        );
-        clickSplat(pointers[touches[i].identifier]);
-      }
-    },
-    false
-  );
-
-  window.addEventListener(
-    "touchmove",
-    (e) => {
-      const touches = e.targetTouches;
-      for (let i = 0; i < touches.length; i++) {
-        let posX = scaleByPixelRatio(touches[i].clientX);
-        let posY = scaleByPixelRatio(touches[i].clientY);
-        updatePointerMoveData(
-          pointers[touches[i].identifier],
-          posX,
-          posY,
-          pointers[touches[i].identifier].color
-        );
-      }
-    },
-    false
-  );
-
-  window.addEventListener("touchend", (e) => {
-    const touches = e.changedTouches;
-    for (let i = 0; i < touches.length; i++) {
-      updatePointerUpData(pointers[touches[i].identifier]);
-    }
-  });
-
-  // 监听窗口大小变化
-  window.addEventListener("resize", () => {
-    resizeCanvas();
-  });
-
-  // 启动动画
-  update();
 }
 
 // 确保在DOM加载完成后初始化所有功能
 window.addEventListener("DOMContentLoaded", () => {
+  // Make sure the cursor is visible
+  if (document.body.style.cursor === 'none') {
+    document.body.style.cursor = 'default';
+  }
+  const canvas = document.getElementById('fluid');
+  if (canvas && canvas.style.cursor === 'none') {
+    canvas.style.cursor = 'default';
+  }
+
   // 初始化光标
   initFluidCursor();
 });

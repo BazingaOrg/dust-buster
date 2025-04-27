@@ -26,7 +26,6 @@ body {
     font-family: system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
-    cursor: none;
 }
 
 .container {
@@ -1022,11 +1021,6 @@ html:not([data-theme="dark"]) .theme-btn[data-theme="dark"] svg {
     mix-blend-mode: screen;
 }
 
-/* 隐藏原生鼠标光标 */
-body {
-    cursor: none;
-}
-
 /* 但在交互式元素上保持可见光标 */
 a,
 button,
@@ -1043,6 +1037,6 @@ textarea {
     }
     
     body {
-        cursor: auto;
+        /* cursor: auto; */ /* 这行被注释掉或者删除 */
     }
 }
